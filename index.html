@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gamified Interactive Resume — Skill Match Memory Game</title>
+  <meta name="description" content="Flip, Match, Unlock — an interactive gamified resume that reveals sections as you match skills." />
+  <style>
+    :root{
+      --bg:#0b2b52; --bg2:#183968;
+      --card:#0b1220; --accent:#60a5fa; --accent-2:#7c3aed;
+      --muted:#94a3b8; --glass: rgba(255,255,255,0.03); --glass-2: rgba(255,255,255,0.02);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,var(--bg),var(--bg2));color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:28px}
+    .stage{width:1100px;max-width:100%;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:18px;padding:20px;box-shadow:0 10px 40px rgba(2,6,23,0.7);position:relative}
+
+    /* HERO */
+    .hero{display:flex;flex-direction:column;align-items:center;gap:16px;padding:36px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+    .hero .title{font-size:34px;font-weight:800;display:flex;gap:12px;align-items:center}
+    .contactCard{background:rgba(255,255,255,0.04);padding:12px 18px;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:420px}
+    .contactRow{display:flex;gap:12px;align-items:center;color:#cfe6ff}
+    .contactRow a{color:#9fc7ff;text-decoration:none}
+    .contactRow a:hover{text-decoration:underline}
+    .tag{font-size:18px;color:rgba(230,238,248,0.9)}
+    .startHeroBtn{margin-top:6px;padding:12px 26px;border-radius:40px;background:linear-gradient(90deg,var(--accent),var(--accent-2));border:none;color:#041127;font-weight:800;font-size:18px;cursor:pointer;box-shadow:0 8px 30px rgba(124,58,237,0.12)}
+
+    /* MAIN APP */
+    .topbar{display:flex;align-items:center;gap:16px;margin-bottom:12px;justify-content:space-between}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px}
+    .controls{display:flex;gap:8px;align-items:center}
+    button.btn{background:var(--accent);border:none;padding:10px 14px;border-radius:10px;color:#041127;cursor:pointer;font-weight:600}
+    button.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    button.btn[disabled]{opacity:0.45;cursor:not-allowed}
+
+    .main{display:flex;gap:20px;margin-top:18px}
+    .left{flex:1}
+    .right{width:360px}
+
+    .welcome{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);padding:16px;border-radius:12px;margin-bottom:12px}
+    .welcome h2{margin:0 0 6px 0}
+    .welcome p{margin:0;color:var(--muted);font-size:13px}
+
+    .board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;background:var(--glass-2);padding:14px;border-radius:12px}
+    .card{aspect-ratio: 3/4; background:linear-gradient(180deg,var(--card),#08101a);border-radius:12px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.15,.8,.25,1);box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .card.flipped{transform:rotateY(180deg)}
+    .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:10px}
+    .front{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);}
+    .back{transform:rotateY(180deg);background:linear-gradient(180deg,#07202a, #0c1923);border:1px solid rgba(255,255,255,0.03)}
+    .chip{font-size:30px}
+    .small{font-size:12px;color:var(--muted)}
+
+    .progressWrap{background:var(--glass);padding:12px;border-radius:12px;margin-bottom:12px}
+    .xp{display:flex;align-items:center;gap:8px}
+    .xp .bar{flex:1;height:12px;background:linear-gradient(90deg, rgba(255,255,255,0.02), transparent);border-radius:999px;overflow:hidden}
+    .xp .progress{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .6s ease}
+    .xp .value{min-width:55px;text-align:right;font-weight:600}
+
+    .sectionCard{background:linear-gradient(180deg,#071029, rgba(255,255,255,0.01));padding:12px;border-radius:10px;margin-bottom:10px}
+    .sectionCard h3{margin:0 0 6px 0}
+    .sectionCard p{margin:0;color:var(--muted);font-size:13px}
+
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:60}
+    .modal.show{display:flex}
+    .modalCard{width:560px;max-width:95%;background:#07101a;padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .typewriter{font-family:monospace;white-space:pre-wrap}
+
+    .toast{position:fixed;right:18px;bottom:18px;background:#07202a;padding:10px 14px;border-radius:8px;border-left:4px solid var(--accent)}
+
+    @media (max-width:1100px){.stage{padding:12px}}
+    @media (max-width:900px){.main{flex-direction:column}.right{width:100%}.board{grid-template-columns:repeat(4,1fr)}}
+    @media (max-width:520px){.board{grid-template-columns:repeat(3,1fr)} .contactCard{min-width:auto;width:100%}}
+  </style>
+</head>
+<body>
+  <div class="stage">
+
+    <!-- HERO -->
+    <div id="preGame" class="hero" aria-hidden="false">
+      <div class="title"><span style="font-size:30px">🎮</span> <span id="heroName">Your Name</span></div>
+
+      <div class="contactCard">
+        <div class="contactRow">
+          <span>📧</span>
+          <a id="heroEmail" href="mailto:someone@example.com">someone@example.com</a>
+          <span style="opacity:0.5">|</span>
+          <a id="heroPhone" href="tel:+0000000000">+00-0000000000</a>
+        </div>
+        <div class="contactRow">
+          <a id="heroLinkedin" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <span style="opacity:0.6">|</span>
+          <a id="heroGithub" href="#" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+      </div>
+
+      <div class="tag" id="heroRole">Machine Learning Enthusiast</div>
+      <div class="tag" style="font-size:16px;opacity:0.95">Match my skills to reveal my professional journey 🚀</div>
+
+      <div style="display:flex;gap:12px">
+        <button id="heroStartBtn" class="startHeroBtn">Start Game</button>
+        <button id="resumeBtn" class="startHeroBtn" style="background:transparent;border:1px solid rgba(255,255,255,0.08);color:#e6eef8;display:none">Resume Saved Progress</button>
+      </div>
+    </div>
+
+    <!-- APP (hidden until start) -->
+    <div id="appMain" style="display:none">
+      <div class="topbar">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="logo">BT</div>
+          <div>
+            <h1>Gamified Interactive Resume — Skill Match Memory Game</h1>
+            <p class="lead">Match skills to unlock About, Education, Skills, Projects & Achievements</p>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="resetBtn" class="btn ghost">Reset Progress</button>
+          <!-- Download button hidden until completion -->
+          <button id="downloadBtn" class="btn" style="display:none">Download Resume</button>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="left">
+          <div class="welcome">
+            <h2>Welcome — Flip, Match, Unlock!</h2>
+            <p class="lead">Click Start Game to begin. Match skill pairs to reveal sections of the résumé. Progress is saved in your browser.</p>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button id="startBtn" class="btn">Start Game</button>
+              <button id="shuffleBtn" class="btn ghost">Shuffle Cards</button>
+            </div>
+          </div>
+
+          <div class="progressWrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong>Progress</strong>
+              <span class="small" id="pairsInfo">0 / 8 Pairs</span>
+            </div>
+            <div class="xp">
+              <div class="bar"><div id="xpBar" class="progress"></div></div>
+              <div class="value" id="xpValue">0%</div>
+            </div>
+          </div>
+
+          <div id="board" class="board" aria-live="polite"></div>
+        </div>
+
+        <aside class="right">
+          <div class="sectionCard">
+            <h3 id="unlockedTitle">Unlocked Sections</h3>
+            <p class="small">As you match pairs, sections will appear here.</p>
+          </div>
+          <div id="sectionsContainer"></div>
+
+          <div class="sectionCard" style="margin-top:12px">
+            <h3>Hints</h3>
+            <p class="small">Tip: start with obvious pairs like "Frontend → React" or "AI → Python".</p>
+          </div>
+
+          <div class="sectionCard" style="margin-top:12px">
+            <h3>Settings</h3>
+            <p class="small">Grid sizes: 4x4 (default) — you can change pair count in the code for difficulty.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modalCard">
+      <div id="modalContent"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button id="closeModal" class="btn ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none">Saved.</div>
+
+<script>
+/* ---------- Drive resume link ---------- */
+const DRIVE_RESUME_URL = 'https://drive.google.com/file/d/1SQPsMEcCok_NmhbpHXJhFr0C4WWzn1ui/view?usp=sharing';
+
+/* ---------- Small utility ---------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]; }); }
+
+/* ---------- Profile ---------- */
+const PROFILE = {
+  fullName: 'Bonela Taraka Ratna',
+  title: 'Machine Learning Enthusiast',
+  phone: '+91-9849134159',
+  email: 'bonela.ratna@iic.ac.in',
+  linkedin: 'https://linkedin.com/in/tarakaratna/',
+  github: 'https://github.com/btarakaratna',
+  about: `Demonstrated expertise in analyzing large datasets, debugging SQL queries, and applying Python-based analytics to generate data-driven business insights.`,
+  education: `Institute of Informatics and Communication, Delhi University — M.Sc. Informatics (Aug 2024 – July 2026)\nCGPA: 6.5\n\nHansraj College, Delhi University — B.Sc. (Hons) Electronics Science (Graduated July 2024)\nCGPA: 6.58`,
+  skills: ['Python','SQL','C','Pandas','NumPy','Matplotlib','Scikit-Learn','Power BI','MySQL','Excel','PowerPoint','Jupyter','VS Code'],
+  projects: `AI in Healthcare: Built an ML model to predict heart disease likelihood using clinical features; achieved ~88% accuracy.\n\nVision AI: Transfer learning for multi-class classification (ResNet50/VGG16/MobileNetV2).`,
+  achievements: `Reduced reporting time by 40% with documentation & tracking framework. Developed REST APIs and led dashboard integrations.`,
+  experience: `R&D Intern Head — CodeAurora (Aug 2025 – Oct 2025): Reduced reporting time by 40% and updated BRD/SRS.\n\nSDE Intern — Bluestock (Apr 2025 – Jun 2025): Built REST APIs for remote IPO app and dashboards.\n\nAdmission Consultant Trainee — Agumentik Group (Jun 2024 – Jul 2024): Assisted client consulting and lead generation.`,
+  research: `Research Article on Nanobiophotonics — Presented in Electronics Department Annual Magazine.`,
+  certificates: `ISRO IIRS Dehradun — Geoprocessing using Python\nTCS iON — Career Edge: Young Professional\nTata Group (Forage) — ESG\nMaven Silicon — VLSI System on Chip Design Overview`
+};
+
+/* ---------- Pairs ---------- */
+const PAIRS = [
+  {a:'Frontend', b:'React', section:'Experience', content:`<strong>Experience</strong><p>${escapeHtml(PROFILE.experience).replace(/\n/g,'<br>')}</p>`},
+  {a:'AI', b:'Python', section:'About Me', content:`<strong>About Me</strong><p>${escapeHtml(PROFILE.about)}</p>`},
+  {a:'Database', b:'SQL', section:'Education', content:`<strong>Education</strong><p>${escapeHtml(PROFILE.education).replace(/\n/g,'<br>')}</p>`},
+  {a:'BI', b:'Power BI', section:'Technical Skills', content:`<strong>Technical Skills</strong><ul><li>${PROFILE.skills.map(s=>escapeHtml(s)).join('</li><li>')}</li></ul>`},
+  {a:'Design', b:'Figma', section:'Projects', content:`<strong>Projects</strong><pre style="white-space:pre-wrap">${escapeHtml(PROFILE.projects)}</pre>`},
+  {a:'Backend', b:'Node.js', section:'Achievements', content:`<strong>Achievements</strong><pre style="white-space:pre-wrap">${escapeHtml(PROFILE.achievements)}</pre>`},
+  {a:'Web', b:'HTML/CSS', section:'Research', content:`<strong>Research</strong><p>${escapeHtml(PROFILE.research)}</p>`},
+  {a:'Cloud', b:'AWS', section:'Certificates & Contact', content:`<strong>Certificates</strong><pre style="white-space:pre-wrap">${escapeHtml(PROFILE.certificates)}</pre><hr><p><strong>Contact</strong><br>Email: ${escapeHtml(PROFILE.email)}<br>Phone: ${escapeHtml(PROFILE.phone)}<br><a href="${escapeHtml(PROFILE.linkedin)}" target="_blank" rel="noopener noreferrer">LinkedIn</a> • <a href="${escapeHtml(PROFILE.github)}" target="_blank" rel="noopener noreferrer">GitHub</a></p>`}
+];
+
+/* ---------- State & DOM refs ---------- */
+let cards = [];
+const pairCount = PAIRS.length;
+let firstCard = null, secondCard = null, lockBoard = false, matchedPairs = 0;
+
+const preGame = document.getElementById('preGame');
+const appMain = document.getElementById('appMain');
+const heroStartBtn = document.getElementById('heroStartBtn');
+const resumeBtn = document.getElementById('resumeBtn');
+const heroName = document.getElementById('heroName');
+const heroEmail = document.getElementById('heroEmail');
+const heroPhone = document.getElementById('heroPhone');
+const heroLinkedin = document.getElementById('heroLinkedin');
+const heroGithub = document.getElementById('heroGithub');
+
+const boardEl = document.getElementById('board');
+const startBtn = document.getElementById('startBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const resetBtn = document.getElementById('resetBtn');
+const xpBar = document.getElementById('xpBar');
+const xpValue = document.getElementById('xpValue');
+const pairsInfo = document.getElementById('pairsInfo');
+const sectionsContainer = document.getElementById('sectionsContainer');
+const modal = document.getElementById('modal');
+const modalContent = document.getElementById('modalContent');
+const closeModal = document.getElementById('closeModal');
+const downloadBtn = document.getElementById('downloadBtn');
+const toast = document.getElementById('toast');
+
+/* ---------- Init hero content ---------- */
+heroName.textContent = PROFILE.fullName;
+heroEmail.href = 'mailto:' + PROFILE.email; heroEmail.textContent = PROFILE.email;
+heroPhone.href = 'tel:' + PROFILE.phone; heroPhone.textContent = PROFILE.phone;
+heroLinkedin.href = PROFILE.linkedin; heroLinkedin.textContent = 'LinkedIn';
+heroGithub.href = PROFILE.github; heroGithub.textContent = 'GitHub';
+document.getElementById('heroRole').textContent = PROFILE.title;
+
+/* ---------- Cards ---------- */
+function initCards(){
+  cards = [];
+  PAIRS.forEach((p,i)=>{
+    cards.push({id:`p${i}`, label:p.a, pair:i});
+    cards.push({id:`p${i}b`, label:p.b, pair:i});
+  });
+}
+function shuffle(array){ for(let i=array.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [array[i],array[j]]=[array[j],array[i]]; } }
+
+function renderBoard(){
+  boardEl.innerHTML='';
+  cards.forEach(c=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.dataset.pair = c.pair;
+    card.dataset.id = c.id;
+    card.innerHTML = `
+      <div class="face front"><div style="text-align:center"><div class="chip">🎴</div><div class="small">Click to flip</div></div></div>
+      <div class="face back"><div style="text-align:center"><strong>${escapeHtml(c.label)}</strong></div></div>
+    `;
+    card.addEventListener('click', onCardClick);
+    boardEl.appendChild(card);
+  });
+}
+
+/* ---------- Game logic ---------- */
+function onCardClick(e){
+  if(lockBoard) return;
+  const el = e.currentTarget;
+  if(el.classList.contains('flipped')) return;
+  el.classList.add('flipped','glow');
+  if(!firstCard){ firstCard = el; return; }
+  secondCard = el; lockBoard = true; checkForMatch();
+}
+function checkForMatch(){
+  const isMatch = firstCard.dataset.pair === secondCard.dataset.pair;
+  if(isMatch) handleMatch();
+  else setTimeout(()=>{ firstCard.classList.remove('flipped','glow'); secondCard.classList.remove('flipped','glow'); resetTurn(); }, 800);
+}
+function handleMatch(){
+  matchedPairs++;
+  const pairIndex = parseInt(firstCard.dataset.pair,10);
+  unlockSection(pairIndex);
+  updateXP();
+  firstCard.removeEventListener('click', onCardClick);
+  secondCard.removeEventListener('click', onCardClick);
+  resetTurn();
+  saveState();
+  if(matchedPairs === pairCount) handleCompletion();
+}
+function resetTurn(){ [firstCard,secondCard]=[null,null]; lockBoard=false; }
+
+/* ---------- Unlock UI ---------- */
+function unlockSection(i){
+  const p = PAIRS[i];
+  if(document.querySelector(`[data-section='${i}']`)) return;
+  const div = document.createElement('div');
+  div.className='sectionCard';
+  div.dataset.section = i;
+  const title = document.createElement('h3'); title.textContent = p.section;
+  const body = document.createElement('div'); body.className = 'small'; body.innerHTML = p.content;
+  div.appendChild(title); div.appendChild(body); sectionsContainer.appendChild(div);
+  showModal(p.section, p.content);
+}
+function showModal(title, htmlContent){
+  modalContent.innerHTML = `<h3 style="margin:0">${escapeHtml(title)}</h3><div style="height:10px"></div><div class="typewriter">${htmlContent}</div>`;
+  modal.classList.add('show');
+}
+closeModal.addEventListener('click', ()=> modal.classList.remove('show'));
+modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.classList.remove('show'); });
+
+function updateXP(){ const percent = Math.round((matchedPairs / pairCount) * 100); xpBar.style.width = percent + '%'; xpValue.textContent = percent + '%'; pairsInfo.textContent = `${matchedPairs} / ${pairCount} Pairs`; }
+
+/* ---------- Completion handling ---------- */
+function handleCompletion(){
+  // show modal with Drive link and enable top Download button
+  const html = `<p>🎉 Congrats — you've unlocked the full resume!</p>
+    <p>Click the button below to open the resume (Google Drive preview). Use Drive's download action there.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <a id="completeDownloadLink" href="${DRIVE_RESUME_URL}" target="_blank" rel="noopener noreferrer" class="btn" style="text-decoration:none">Download Resume</a>
+      <button id="closeAfterComplete" class="btn ghost">Close</button>
+    </div>`;
+  modalContent.innerHTML = `<h3 style="margin:0">You've Unlocked My Full Resume!</h3><div style="height:10px"></div><div class="typewriter">${html}</div>`;
+  modal.classList.add('show');
+
+  // reveal top download button
+  downloadBtn.style.display = 'inline-block';
+
+  // dynamic close handler
+  setTimeout(()=>{ const btn = document.getElementById('closeAfterComplete'); if(btn) btn.addEventListener('click', ()=> modal.classList.remove('show')); }, 50);
+}
+
+/* ---------- Persistence ---------- */
+const STORAGE_KEY = 'gamified_resume_state_v3';
+function saveState(){
+  try{
+    const revealed = Array.from(document.querySelectorAll('.card.flipped')).map(c=>c.dataset.id);
+    const unlocked = Array.from(document.querySelectorAll('[data-section]')).map(s=>s.dataset.section);
+    const data = {revealed, unlocked, matchedPairs};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    showToast('Progress saved.');
+    // only show resume button to resume saved session; don't show download
+    resumeBtn.style.display = 'inline-block';
+  }catch(e){ console.warn('Failed to save state', e); }
+}
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return false;
+  try{
+    const data = JSON.parse(raw);
+    initCards(); renderBoard();
+    setTimeout(()=>{
+      if(data.revealed){ data.revealed.forEach(id=>{ const el=document.querySelector(`.card[data-id='${id}']`); if(el){ el.classList.add('flipped'); el.removeEventListener('click', onCardClick); } }); }
+      sectionsContainer.innerHTML = '';
+      if(data.unlocked){ data.unlocked.forEach(s=>{ const i=parseInt(s,10); const p=PAIRS[i]; const div=document.createElement('div'); div.className='sectionCard'; div.dataset.section=i; const title=document.createElement('h3'); title.textContent=p.section; const body=document.createElement('div'); body.className='small'; body.innerHTML=p.content; div.appendChild(title); div.appendChild(body); sectionsContainer.appendChild(div); }); }
+      matchedPairs = data.matchedPairs || 0; updateXP();
+      // if the saved state was already complete, enable download button
+      if(matchedPairs === pairCount) downloadBtn.style.display = 'inline-block';
+    }, 200);
+    resumeBtn.style.display = 'inline-block';
+    return true;
+  }catch(e){ console.error('Failed to load state', e); return false; }
+}
+
+/* ---------- Controls ---------- */
+function resetProgress(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){console.warn('Failed to remove storage', e);}
+  matchedPairs = 0; firstCard = secondCard = null; lockBoard = false;
+  sectionsContainer.innerHTML = ''; initCards(); shuffle(cards); renderBoard(); updateXP();
+  resumeBtn.style.display = 'none'; downloadBtn.style.display = 'none';
+  showToast('Progress reset.');
+}
+resetBtn.addEventListener('click', ()=>{ if(confirm('Reset progress and start over?')){ resetProgress(); } });
+
+startBtn.addEventListener('click', ()=> startGame());
+shuffleBtn.addEventListener('click', ()=> shuffleBoard());
+
+function startGame(){
+  preGame.style.display = 'none'; appMain.style.display = 'block';
+  firstCard = secondCard = null; lockBoard = false; matchedPairs = 0; initCards(); shuffle(cards); renderBoard(); sectionsContainer.innerHTML=''; updateXP();
+  saveState();
+}
+function shuffleBoard(){ shuffle(cards); renderBoard(); }
+
+/* ---------- Hero controls ---------- */
+heroStartBtn.addEventListener('click', ()=>{
+  preGame.style.display = 'none'; appMain.style.display = 'block';
+  if(!loadState()) startGame();
+});
+resumeBtn.addEventListener('click', ()=>{
+  preGame.style.display = 'none'; appMain.style.display = 'block';
+  loadState();
+});
+
+/* ---------- Download button action (top) ---------- */
+downloadBtn.addEventListener('click', ()=>{
+  // only works when visible (enabled after completion)
+  window.open(DRIVE_RESUME_URL, '_blank', 'noopener');
+});
+
+/* ---------- Toast ---------- */
+function showToast(msg, ms=1400){ toast.textContent = msg; toast.style.display = 'block'; setTimeout(()=> toast.style.display='none', ms); }
+
+/* ---------- Init ---------- */
+initCards(); shuffle(cards); renderBoard();
+if(!loadState()){
+  preGame.style.display = 'flex'; appMain.style.display = 'none';
+}else{
+  preGame.style.display = 'flex'; appMain.style.display = 'none';
+  resumeBtn.style.display = 'inline-block';
+}
+downloadBtn.style.display = 'none'; // ensure it's hidden until completion
+
+// autosave
+setInterval(()=>{ if(matchedPairs>0) saveState(); }, 3000);
+
+</script>
+</body>
+</html>
